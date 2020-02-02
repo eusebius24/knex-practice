@@ -2,6 +2,18 @@ const ArticlesService = require('../src/articles-service')
 const knex = require('knex')
 
 describe(`Articles service object`, function() {
+    before(() => {
+        db = knex({
+            client: 'pg',
+            connection: process.env.TEST_DB_URL,
+        })
+    })
+
+    before(() => db('blogful_articles').truncate())
+
+    afterEach(() => db('blogful_articles').truncate())
+
+    after(() => db.destroy())
     let db 
     let testArticles = [
             { 
@@ -24,18 +36,7 @@ describe(`Articles service object`, function() {
          },
           ]
 
-    before(() => {
-        db = knex({
-            client: 'pg',
-            connection: process.env.TEST_DB_URL,
-        })
-    })
-
-    before(() => db('blogful_articles').truncate())
-
-    afterEach(() => db('blogful_articles').truncate())
-
-    after(() => db.destroy())
+   
 
     context(`Given 'blogful_articles' has data`, () => {
         beforeEach(() => {
@@ -47,6 +48,16 @@ describe(`Articles service object`, function() {
         return ArticlesService.getAllArticles(db)
             .then(actual => {
                 expect(actual).to.eql(testArticles)
+            })
+    })
+
+    it(`deleteArticle() removes an article by id from 'blogful_articles' table`, () => {
+        const articleId = 3 
+        return ArticlesService.deleteArticle(db, articleId)
+            .then(() => ArticlesService.getAllArticles(db))
+            .then(allArticles => {
+                const expected = testArticles.filter(article => articleId !== articleId)
+                expect(allArticles).to.eql(expected)
             })
     })
         
@@ -69,18 +80,26 @@ describe(`Articles service object`, function() {
         return ArticlesService.insertArticle(db, newArticle)
     })
 
-    it(`getById() resolves an article by id from 'blogful_articles' table`, () => {
-        const thirdId = 3 
-        const thirdTestArticle = testArticles[thirdId - 1]
-        return ArticlesService.getById(db, thirdId)
-            .then(actual => {
-                expect(actual).to.eql({
-                    id: thirdId,
-                    title: thirdTestArticle.title,
-                    content: thirdTestArticle.content,
-                    date_published: thirdTestArticle.date_published,
+    context(`getbyId()`, () => {
+        beforeEach(() => {
+            return db
+                .into('blogful_articles')
+                .insert(testArticles)
+        })
+        it(`getById() resolves an article by id from 'blogful_articles' table`, () => {
+            const thirdId = 3 
+            const thirdTestArticle = testArticles[thirdId - 1]
+            return ArticlesService.getById(db, thirdId)
+                .then(actual => {
+                    expect(actual).to.eql({
+                        id: thirdId,
+                        title: thirdTestArticle.title,
+                        content: thirdTestArticle.content,
+                        date_published: thirdTestArticle.date_published,
+                    })
                 })
-            })
-    })
+        })
+    }) 
+    
     })
     
